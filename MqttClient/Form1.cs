@@ -32,7 +32,7 @@ namespace MqttClient
 
             _timer.Elapsed += OnTimedEvent;
 
-            PathBox2.Text = AppDomain.CurrentDomain.BaseDirectory;
+            PathBox2.Text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ConfigurationId.txt");
         }
 
         private async void OnSubscriberConnected(MqttClientConnectedEventArgs x)
@@ -105,13 +105,18 @@ namespace MqttClient
                     break;
             }
 
-            WriteLineToTextBox(deserialized);
+            WriteLineToTextBoxMessage(deserialized);
         }
 
-        private void WriteLineToTextBox(MessageEnvelope deserialized)
+        private void WriteLineToTextBoxMessage(MessageEnvelope deserialized)
         {
             var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes) deserialized.Code}";
 
+            WriteLineToTextBox(item);
+        }
+
+        private void WriteLineToTextBox(string item)
+        {
             BeginInvoke((MethodInvoker) delegate { textBox1.Text = item + Environment.NewLine + textBox1.Text; });
         }
 
@@ -240,7 +245,7 @@ namespace MqttClient
                 .SetCode(MessageCodes.DeviceIdentify)
                 .SetPayload(new DeviceIdentify
                 {
-                    Version = "1.0.0.1",
+                    Version = "1.0.0.10",
                     IpAddress = "127.0.0.1"
                 }).Build();
 
