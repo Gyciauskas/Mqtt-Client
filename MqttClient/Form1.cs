@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
@@ -19,6 +21,8 @@ namespace MqttClient
     {
         private IManagedMqttClient _mqttClient;
         private readonly Timer _timer;
+        private readonly Dictionary<string, int> _usersMap = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _readersMap = new Dictionary<string, int>();   
 
         public Form1()
         {
@@ -44,7 +48,9 @@ namespace MqttClient
 
             var item = $"Time: {DateTime.Now} | Connected";
 
-            BeginInvoke((MethodInvoker)delegate { textBox1.Text = item + Environment.NewLine + textBox1.Text; });
+            BeginInvoke((MethodInvoker)delegate { textBox1.Text = string.IsNullOrEmpty(textBox1.Text) 
+                ? textBox1.Text + item 
+                : textBox1.Text + Environment.NewLine + item; });
 
             await PublishDeviceIdentityAsync();
         }
@@ -53,7 +59,7 @@ namespace MqttClient
         {
             var item = $"Time: {DateTime.Now} | Disconnected";
 
-            BeginInvoke((MethodInvoker)delegate { textBox1.Text = item + Environment.NewLine + textBox1.Text; });
+            BeginInvoke((MethodInvoker)delegate { textBox1.Text = textBox1.Text + Environment.NewLine + item; });
         }
 
         private async void OnSubscriberMessageReceived(MqttApplicationMessageReceivedEventArgs x)
@@ -67,6 +73,107 @@ namespace MqttClient
                     var result = DeserializeAccessLevelsCmd(deserialized.Payload);
                 }
                     break;
+                case MessageCodes.OverwriteSchedules:
+                {
+                    var result = DeserializeSchedulesCmd(deserialized.Payload);
+
+                    var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes)deserialized.Code}";
+
+                    WriteLineToTextBox(item);
+
+                    foreach (var scheduleData in result.SchedulesData)
+                    {
+                        var message = $"    Schedule name: {scheduleData.Name} | Intervals count: {scheduleData.Intervals?.Length}";
+
+                        WriteLineToTextBox(message);
+                    }
+
+                    return;
+                }
+
+                case MessageCodes.OverwriteDoors:
+                {
+                    var result = DeserializeDoorsCmd(deserialized.Payload);
+
+                    var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes)deserialized.Code}";
+
+                    WriteLineToTextBox(item);
+
+                    if (result.DoorsData == null) return;
+
+                    var readers = new object[result.DoorsData.First().ReadersData.Length];
+
+                    var counter = 0;
+
+                    foreach (var doorData in result.DoorsData)
+                    {
+                        foreach (var readerData in doorData.ReadersData)
+                        {
+                            if (readerData.Side == 0)
+                            {
+                                _readersMap.Add("Entry reader", readerData.Id);
+
+                                readers[counter] = "Entry reader";
+                            }
+                            else
+                            {
+                                _readersMap.Add("Exit reader", readerData.Id);
+
+                                readers[counter] = "Exit reader";
+                            }
+
+                            counter++;
+                        }
+                    }
+
+                    BeginInvoke((MethodInvoker)delegate { comboBox2.Items.AddRange(readers); });
+
+                    return;
+                }
+                case MessageCodes.OverwriteUsers:
+                {
+                    var result = DeserializeUsersCmd(deserialized.Payload);
+
+                    var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes)deserialized.Code}";
+
+                    WriteLineToTextBox(item);
+
+                    var users = new object[result.Users.Length];
+                    var counter = 0;
+
+                    foreach (var userData in result.Users)      
+                    {
+                        //    var message = $"    User name: {userData.FirstName} | User last name: {userData.LastName} | Identifications count: {userData.Identifications?.Length}";
+
+                        //    WriteLineToTextBox(message);
+
+                        //    message = $"        Company: {userData.CompanyName} | Department: {userData.DepartmentName} | Title: {userData.UserTitleName} | Employee number: {userData.EmployeeNumber}";
+
+                        //    WriteLineToTextBox(message);
+
+                        //    if (userData.Identifications != null && userData.Identifications.Any())
+                        //    {
+                        //        var identification = userData.Identifications.First();
+
+                        //        message = $"        Card data: {identification.RawCardHex} | Card number: {identification.CardNumber} | Facility code: {identification.FacilityCode} | Pin code: {identification.PinCode}";
+
+                        //        WriteLineToTextBox(message);    
+                        //    }
+
+                        users[counter] = $"{userData.FirstName} {userData.LastName}";
+
+                        if (!_usersMap.ContainsKey($"{userData.FirstName} {userData.LastName}"))
+                        {
+                            _usersMap.Add($"{userData.FirstName} {userData.LastName}", userData.Id);
+                        }
+
+                        counter++;
+                    }
+
+                    BeginInvoke((MethodInvoker)delegate { comboBox1.Items.AddRange(users); });
+
+                    return;
+                }
                 case MessageCodes.GetConfigurationId:
                 {
                     var configurationId = 0;
@@ -91,6 +198,10 @@ namespace MqttClient
                     var result = DeserializeConfigurationId(deserialized.Payload);
 
                     File.WriteAllText(PathBox2.Text, result.ToString());
+
+                    var message = $"    ConfigurationId: {result}";
+
+                    WriteLineToTextBox(message);
                 }
                     break;
                 case MessageCodes.DeviceIdentifyReject:
@@ -117,7 +228,7 @@ namespace MqttClient
 
         private void WriteLineToTextBox(string item)
         {
-            BeginInvoke((MethodInvoker) delegate { textBox1.Text = item + Environment.NewLine + textBox1.Text; });
+            BeginInvoke((MethodInvoker) delegate { textBox1.Text = textBox1.Text + Environment.NewLine + item; });
         }
 
         public MessageEnvelope ToMessageWrapper(byte[] bytes)
@@ -135,6 +246,36 @@ namespace MqttClient
             using (var ms = new MemoryStream(bytes))
             {
                 var deserialized = Serializer.Deserialize<OverwriteAccessLevelsCmd>(ms);       
+
+                return deserialized;
+            }
+        }
+
+        private OverwriteSchedulesCmd DeserializeSchedulesCmd(byte[] bytes)      
+        {
+            using (var ms = new MemoryStream(bytes))
+            {
+                var deserialized = Serializer.Deserialize<OverwriteSchedulesCmd>(ms);
+
+                return deserialized;
+            }
+        }
+
+        private OverwriteUsersCmd DeserializeUsersCmd(byte[] bytes)
+        {
+            using (var ms = new MemoryStream(bytes))
+            {
+                var deserialized = Serializer.Deserialize<OverwriteUsersCmd>(ms);
+
+                return deserialized;
+            }
+        }
+
+        private OverwriteDoorsCmd DeserializeDoorsCmd(byte[] bytes)     
+        {
+            using (var ms = new MemoryStream(bytes))
+            {
+                var deserialized = Serializer.Deserialize<OverwriteDoorsCmd>(ms);
 
                 return deserialized;
             }
@@ -211,14 +352,26 @@ namespace MqttClient
 
         private async Task AccessEvent(EventType eventType)
         {
+            if (!_usersMap.TryGetValue((string)comboBox1.SelectedItem, out var userId))
+            {
+                return;
+            }
+
+            if (!_readersMap.TryGetValue((string)comboBox2.SelectedItem, out var readerId))     
+            {
+                return;
+            }
+
             var eventData = new EventData
             {
                 Id = 1,
-                ReaderId = string.IsNullOrEmpty(ReaderIdBox.Text) ? (int?) null : int.Parse(ReaderIdBox.Text),
-                UserId = string.IsNullOrEmpty(UserIdBox.Text) ? (int?) null : int.Parse(UserIdBox.Text),
+                ReaderId = readerId,
+                UserId = userId,
                 TypeId = (int) eventType,
                 Time = DateTime.Now,
-                Code = (int)MessageCodes.Event
+                Code = (int)MessageCodes.Event,
+                Reason = eventType == EventType.AccessDenied ? (int)EventReason.ExpiredAccessLevel : (int)EventReason.NoReason,
+                Description = UserName.Text
             };
 
             var msg = new MessageEnvelopeBuilder()
@@ -253,7 +406,7 @@ namespace MqttClient
 
             var item = $"Time: {DateTime.Now} | Device identity message published";
 
-            BeginInvoke((MethodInvoker)delegate { textBox1.Text = item + Environment.NewLine + textBox1.Text; });
+            BeginInvoke((MethodInvoker)delegate { textBox1.Text = textBox1.Text + Environment.NewLine + item; });
         }
     }
 }

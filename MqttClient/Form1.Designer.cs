@@ -37,8 +37,6 @@
             this.label3 = new System.Windows.Forms.Label();
             this.ServerPort = new System.Windows.Forms.TextBox();
             this.Disconnect_button = new System.Windows.Forms.Button();
-            this.ReaderIdBox = new System.Windows.Forms.TextBox();
-            this.UserIdBox = new System.Windows.Forms.TextBox();
             this.AccessGranted = new System.Windows.Forms.Button();
             this.AccessDenied = new System.Windows.Forms.Button();
             this.ReaderId = new System.Windows.Forms.Label();
@@ -49,6 +47,8 @@
             this.IpAddressBox = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
             this.PathBox2 = new System.Windows.Forms.TextBox();
+            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.comboBox2 = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // textBox1
@@ -56,6 +56,7 @@
             this.textBox1.Location = new System.Drawing.Point(12, 287);
             this.textBox1.Multiline = true;
             this.textBox1.Name = "textBox1";
+            this.textBox1.ReadOnly = true;
             this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBox1.Size = new System.Drawing.Size(776, 362);
             this.textBox1.TabIndex = 0;
@@ -132,23 +133,9 @@
             this.Disconnect_button.UseVisualStyleBackColor = true;
             this.Disconnect_button.Click += new System.EventHandler(this.Disconnect_button_Click);
             // 
-            // ReaderIdBox
-            // 
-            this.ReaderIdBox.Location = new System.Drawing.Point(517, 48);
-            this.ReaderIdBox.Name = "ReaderIdBox";
-            this.ReaderIdBox.Size = new System.Drawing.Size(100, 20);
-            this.ReaderIdBox.TabIndex = 9;
-            // 
-            // UserIdBox
-            // 
-            this.UserIdBox.Location = new System.Drawing.Point(517, 80);
-            this.UserIdBox.Name = "UserIdBox";
-            this.UserIdBox.Size = new System.Drawing.Size(100, 20);
-            this.UserIdBox.TabIndex = 10;
-            // 
             // AccessGranted
             // 
-            this.AccessGranted.Location = new System.Drawing.Point(517, 117);
+            this.AccessGranted.Location = new System.Drawing.Point(534, 112);
             this.AccessGranted.Name = "AccessGranted";
             this.AccessGranted.Size = new System.Drawing.Size(100, 23);
             this.AccessGranted.TabIndex = 11;
@@ -158,7 +145,7 @@
             // 
             // AccessDenied
             // 
-            this.AccessDenied.Location = new System.Drawing.Point(517, 146);
+            this.AccessDenied.Location = new System.Drawing.Point(534, 141);
             this.AccessDenied.Name = "AccessDenied";
             this.AccessDenied.Size = new System.Drawing.Size(100, 23);
             this.AccessDenied.TabIndex = 12;
@@ -169,20 +156,20 @@
             // ReaderId
             // 
             this.ReaderId.AutoSize = true;
-            this.ReaderId.Location = new System.Drawing.Point(452, 51);
+            this.ReaderId.Location = new System.Drawing.Point(464, 85);
             this.ReaderId.Name = "ReaderId";
-            this.ReaderId.Size = new System.Drawing.Size(54, 13);
+            this.ReaderId.Size = new System.Drawing.Size(64, 13);
             this.ReaderId.TabIndex = 13;
-            this.ReaderId.Text = "Reader Id";
+            this.ReaderId.Text = "Reader side";
             // 
             // UserId
             // 
             this.UserId.AutoSize = true;
-            this.UserId.Location = new System.Drawing.Point(452, 83);
+            this.UserId.Location = new System.Drawing.Point(464, 49);
             this.UserId.Name = "UserId";
-            this.UserId.Size = new System.Drawing.Size(41, 13);
+            this.UserId.Size = new System.Drawing.Size(29, 13);
             this.UserId.TabIndex = 14;
-            this.UserId.Text = "User Id";
+            this.UserId.Text = "User";
             // 
             // Identifier
             // 
@@ -234,11 +221,29 @@
             this.PathBox2.Size = new System.Drawing.Size(206, 20);
             this.PathBox2.TabIndex = 20;
             // 
+            // comboBox1
+            // 
+            this.comboBox1.FormattingEnabled = true;
+            this.comboBox1.Location = new System.Drawing.Point(534, 50);
+            this.comboBox1.Name = "comboBox1";
+            this.comboBox1.Size = new System.Drawing.Size(228, 21);
+            this.comboBox1.TabIndex = 21;
+            // 
+            // comboBox2
+            // 
+            this.comboBox2.FormattingEnabled = true;
+            this.comboBox2.Location = new System.Drawing.Point(534, 82);
+            this.comboBox2.Name = "comboBox2";
+            this.comboBox2.Size = new System.Drawing.Size(121, 21);
+            this.comboBox2.TabIndex = 22;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 661);
+            this.Controls.Add(this.comboBox2);
+            this.Controls.Add(this.comboBox1);
             this.Controls.Add(this.PathBox2);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.IpAddressBox);
@@ -249,8 +254,6 @@
             this.Controls.Add(this.ReaderId);
             this.Controls.Add(this.AccessDenied);
             this.Controls.Add(this.AccessGranted);
-            this.Controls.Add(this.UserIdBox);
-            this.Controls.Add(this.ReaderIdBox);
             this.Controls.Add(this.Disconnect_button);
             this.Controls.Add(this.ServerPort);
             this.Controls.Add(this.label3);
@@ -279,8 +282,6 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox ServerPort;
         private System.Windows.Forms.Button Disconnect_button;
-        private System.Windows.Forms.TextBox ReaderIdBox;
-        private System.Windows.Forms.TextBox UserIdBox;
         private System.Windows.Forms.Button AccessGranted;
         private System.Windows.Forms.Button AccessDenied;
         private System.Windows.Forms.Label ReaderId;
@@ -291,6 +292,8 @@
         private System.Windows.Forms.TextBox IpAddressBox;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox PathBox2;
+        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox comboBox2;
     }
 }
 
