@@ -130,6 +130,17 @@ namespace MqttClient
 
                     return;
                 }
+
+                case MessageCodes.AddUser:
+                {
+                    var result = DeserializeUsersCmd(deserialized.Payload);
+
+                    var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes)deserialized.Code}";
+
+                    WriteLineToTextBox(item);
+
+                    return;
+                }
                 case MessageCodes.OverwriteUsers:
                 {
                     var result = DeserializeUsersCmd(deserialized.Payload);
@@ -297,9 +308,11 @@ namespace MqttClient
             {
                 Serializer.Serialize(stream, msg);
 
+                var payload = stream.ToArray();
+
                 var message = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
-                    .WithPayload(stream.ToArray())
+                    .WithPayload(payload)
                     .Build();
 
                 await _mqttClient.PublishAsync(message);
