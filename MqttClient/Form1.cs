@@ -104,6 +104,7 @@ namespace MqttClient
                     var readers = new object[result.DoorsData.First().ReadersData.Length];
 
                     var counter = 0;
+                    _readersMap.Clear();
 
                     foreach (var doorData in result.DoorsData)
                     {
@@ -151,6 +152,7 @@ namespace MqttClient
 
                     var users = new object[result.Users.Length];
                     var counter = 0;
+                    _usersMap.Clear();
 
                     foreach (var userData in result.Users)      
                     {
