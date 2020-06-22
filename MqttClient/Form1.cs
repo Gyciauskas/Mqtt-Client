@@ -59,7 +59,10 @@ namespace MqttClient
         {
             var item = $"Time: {DateTime.Now} | Disconnected";
 
-            BeginInvoke((MethodInvoker)delegate { textBox1.Text = textBox1.Text + Environment.NewLine + item; });
+            BeginInvoke((MethodInvoker)delegate {
+                textBox1.Text = string.IsNullOrEmpty(textBox1.Text)
+                    ? textBox1.Text + item
+                    : textBox1.Text + Environment.NewLine + item;});
         }
 
         private async void OnSubscriberMessageReceived(MqttApplicationMessageReceivedEventArgs x)
@@ -102,8 +105,8 @@ namespace MqttClient
 
                         var readers = new object[result.DoorsData.First().ReadersData.Length];
 
-                    var counter = 0;
-                    _readersMap.Clear();
+                        var counter = 0;
+                        _readersMap.Clear();
 
                         foreach (var doorData in result.DoorsData)
                         {
@@ -149,9 +152,9 @@ namespace MqttClient
 
                         WriteLineToTextBox(item);
 
-                    var users = new object[result.Users.Length];
-                    var counter = 0;
-                    _usersMap.Clear();
+                        var users = new object[result.Users.Length];
+                        var counter = 0;
+                        _usersMap.Clear();
 
                         foreach (var userData in result.Users)
                         {
@@ -253,23 +256,13 @@ namespace MqttClient
             }
         }
 
-        private T DeserializeObject<T>(byte[] bytes)
+        private static T DeserializeObject<T>(byte[] bytes)
         {
             using (var ms = new MemoryStream(bytes))
             {
                 var deserialized = Serializer.Deserialize<T>(ms);
 
                 return deserialized;
-            }
-        }
-
-        public int DeserializeConfigurationId(byte[] bytes)
-        {
-            using (var ms = new MemoryStream(bytes))
-            {
-                var deserialized = Serializer.Deserialize<OverwriteConfigurationIdCmd>(ms);
-
-                return deserialized.ConfigurationId;
             }
         }
 
