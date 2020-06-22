@@ -109,6 +109,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DeserializerFactory.cs" />
+    <Compile Include="Deserializers\Deserializer.cs" />
+    <Compile Include="Deserializers\DoorsDeserializer.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
