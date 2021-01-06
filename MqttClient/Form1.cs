@@ -148,6 +148,9 @@ namespace MqttClient
                     {
                         var result = DeserializeObject<OverwriteUsersCmd>(deserialized.Payload);
 
+                        // If no users return
+                        if (result.Users == null) return;
+
                         var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes)deserialized.Code}";
 
                         WriteLineToTextBox(item);
@@ -303,6 +306,7 @@ namespace MqttClient
 
             var options = new ManagedMqttClientOptionsBuilder()
                 .WithClientOptions(new MqttClientOptionsBuilder()
+                    .WithKeepAlivePeriod(TimeSpan.FromSeconds(5))
                     .WithClientId(IdentifierBox.Text)
                     .WithCredentials(UserName.Text, Password.Text)
                     .WithTcpServer(IpAddressBox.Text, int.Parse(ServerPort.Text))
