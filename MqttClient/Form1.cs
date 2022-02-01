@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,12 +18,38 @@ using Timer = System.Timers.Timer;
 
 namespace MqttClient
 {
+    public class User
+    {
+        public int UserId { get; set; }
+        public IList<string> AccessLevels { get; set; }
+    }
+
+    public class Interval
+    {
+        public TimeSpan Start { get; set; }
+        public TimeSpan End { get; set; }
+        public int Id { get; set; }     
+    }
+
     public partial class Form1 : Form
     {
+        private readonly Interval[] _accessIntervals =      
+        {
+            // Explanation -> TimeSpan(int hours, int minutes, int seconds)
+            new Interval {Start = new TimeSpan(16, 55, 0), End = new TimeSpan(17, 00, 0), Id = 4}, // Breakfast
+            new Interval {Start = new TimeSpan(17, 00, 0), End = new TimeSpan(17, 05, 0), Id = 3}, // Lunch
+            new Interval {Start = new TimeSpan(17, 05, 0), End = new TimeSpan(17, 10, 0), Id = 5} // Dinner
+        };            
+
         private IManagedMqttClient _mqttClient;
         private readonly Timer _timer;
-        private readonly Dictionary<string, int> _usersMap = new Dictionary<string, int>();
+        private readonly Timer _accessGrantedTimer;
+        private readonly ConcurrentDictionary<string, int> _usersMap = new ConcurrentDictionary<string, int>();
         private readonly Dictionary<string, int> _readersMap = new Dictionary<string, int>();
+
+        private readonly ConcurrentDictionary<int, IEnumerable<int>> _userAccessLevels = new ConcurrentDictionary<int, IEnumerable<int>>();
+
+        public readonly TimeSpan AccessLevelsAssignTime = new TimeSpan(12, 19, 0);
 
         public Form1()
         {
@@ -35,6 +62,13 @@ namespace MqttClient
             };
 
             _timer.Elapsed += OnTimedEvent;
+
+            _accessGrantedTimer = new Timer(2000)
+            {
+                AutoReset = true
+            };
+
+            _accessGrantedTimer.Elapsed += OnAccessGrantedEvent;
 
             PathBox2.Text = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ConfigurationId.txt");
         }
@@ -138,9 +172,21 @@ namespace MqttClient
                     {
                         var result = DeserializeObject<OverwriteUsersCmd>(deserialized.Payload);
 
-                        var item = $"Time: {DateTime.Now} | Size: {deserialized.Payload?.Length} | Code : {(MessageCodes)deserialized.Code}";
+                        foreach (var user in result.Users)
+                        {
+                            if (_userAccessLevels.TryRemove(user.Id, out var removedAls))
+                            {
+                                var added = _userAccessLevels.TryAdd(user.Id, user.AccessLevelIds);
 
-                        WriteLineToTextBox(item);
+                                var als = user.AccessLevelIds != null
+                                    ? string.Join(";", user.AccessLevelIds)
+                                    : string.Empty; 
+
+                                var item = $"Time: {DateTime.Now} | Updated: {added} | User : {user.FirstName} {user.LastName} | Removed als : {string.Join(";", removedAls)} | Als : {als}";
+
+                                WriteLineToTextBox(item);
+                            }
+                        }
 
                         return;
                     }
@@ -155,8 +201,8 @@ namespace MqttClient
 
                         WriteLineToTextBox(item);
 
-                        var users = new object[result.Users.Length];
-                        var counter = 0;
+                        var users = new List<object>();
+
                         _usersMap.Clear();
 
                         foreach (var userData in result.Users)
@@ -178,17 +224,28 @@ namespace MqttClient
                             //        WriteLineToTextBox(message);    
                             //    }
 
-                            users[counter] = $"{userData.FirstName} {userData.LastName}";
+                            if (userData.AccessLevelIds is null || userData.AccessLevelIds.Any() is false) continue;
 
-                            if (!_usersMap.ContainsKey($"{userData.FirstName} {userData.LastName}"))
+                            users.Add($"{userData.FirstName} {userData.LastName}");
+
+                            if (_usersMap.ContainsKey($"{userData.FirstName} {userData.LastName}") is false)
                             {
-                                _usersMap.Add($"{userData.FirstName} {userData.LastName}", userData.Id);
-                            }
+                                _usersMap.TryAdd($"{userData.FirstName} {userData.LastName}", userData.Id);
 
-                            counter++;
+                                //if (_userAccessLevels.TryGetValue(userData.Id, out var als))
+                                //{
+
+                                //}
+                                //else
+                                //{
+                                //    _userAccessLevels.TryAdd(userData.Id, userData.AccessLevelIds);
+                                //}
+
+                                _userAccessLevels.TryAdd(userData.Id, userData.AccessLevelIds);
+                            }
                         }
 
-                        BeginInvoke((MethodInvoker)delegate { comboBox1.Items.AddRange(users); });
+                        BeginInvoke((MethodInvoker)delegate { comboBox1.Items.AddRange(users.ToArray()); });
 
                         return;
                     }
@@ -323,6 +380,8 @@ namespace MqttClient
 
             _timer.Stop();
 
+            _accessGrantedTimer.Stop();
+
             _mqttClient = null;
         }
 
@@ -373,6 +432,63 @@ namespace MqttClient
             await PublishDeviceIdentityAsync();
         }
 
+        private async void OnAccessGrantedEvent(Object source, ElapsedEventArgs e)
+        {
+            if (_readersMap.Any() is false) return;
+
+            if (_usersMap.Any() is false) return;
+
+            for (int i = 0; i < 5; i++)     
+            {
+                var random = new Random();
+
+                var userId = random.Next(_usersMap.Values.Min(), _usersMap.Values.Max());
+
+                if (_userAccessLevels.TryGetValue(userId, out var als))
+                {
+                    var interval = _accessIntervals.FirstOrDefault(a => a.End >= DateTime.Now.TimeOfDay && a.Start <= DateTime.Now.TimeOfDay);
+
+                    if (interval != null && als != null)
+                    {
+                        if (als.Contains(interval.Id) is false)
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                // If not have als, skip
+                else
+                {
+                    continue;
+                }
+
+                var eventData = new EventData
+                {
+                    Id = 1,
+                    ReaderId = _readersMap.Values.First(),
+                    UserId = userId,
+                    TypeId = (int)EventType.AccessGranted,
+                    Time = DateTime.Now,
+                    Code = (int)MessageCodes.Event,
+                    Reason = (int)EventReason.NoReason,
+                    Description = UserName.Text
+                };
+
+                var msg = new MessageEnvelopeBuilder()
+                    .SetCode(MessageCodes.Event)
+                    .SetPayload(eventData)
+                    .Build();
+
+                await PublishMessageAsync(msg, $"devices/{IdentifierBox.Text}/events");
+
+                await Task.Delay(50);
+            }
+        }
+
         private async Task PublishDeviceIdentityAsync()
         {
             var msg = new MessageEnvelopeBuilder()
@@ -388,6 +504,18 @@ namespace MqttClient
             var item = $"Time: {DateTime.Now} | Device identity message published";
 
             BeginInvoke((MethodInvoker)delegate { textBox1.Text = textBox1.Text + Environment.NewLine + item; });
+        }
+
+        // start random AG
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+            _accessGrantedTimer.Start();
+        }
+
+        // stop random AG
+        private void button2_Click(object sender, EventArgs e)
+        {
+            _accessGrantedTimer.Stop();
         }
     }
 }
